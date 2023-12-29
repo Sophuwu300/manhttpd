@@ -26,7 +26,7 @@ func handleWIS(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.URL.String(), "?") {
 		q = strings.SplitN(r.URL.String(), "?", 2)[1]
 	}
-	cmd := exec.Command("/usr/lib/cgi-bin/man/"+exe, "-bare")
+	cmd := exec.Command("/usr/lib/cgi-bin/man/" + exe)
 	var buff bytes.Buffer
 	cmd.Env = append(cmd.Env, "QUERY_STRING="+q, "REQUEST_METHOD="+r.Method, "SERVER_NAME=localhost:1234")
 	// cmd.Env = append(cmd.Env, "MANPATH=/usr/man:/usr/share/man:/usr/local/man:/usr/local/share/man:/usr/X11R6/man:/opt/man:/snap/man")
