@@ -1,0 +1,31 @@
+
+body, html {
+    background-color: #1e1e1e;
+    color: #c7c7c7;
+}
+
+input, textarea {
+    background-color: #343434;
+    color: #c7c7c7;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #8d53a6;
+}
+
+a {
+    color: #ff7597;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+b {
+    color: #f0f0f0;
+}
+
+i {
+    color: #7f7f7f;
+}
