@@ -1,0 +1,1 @@
+man ../share/man/man1/man2html.1.gz | ./man2html -botm 0 -cgiurl '/page/$section/$title' -leftm 0 -noheads -topm 0 > man2.html
