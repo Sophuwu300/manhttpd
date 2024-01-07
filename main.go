@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 //go:embed font.css
@@ -73,16 +74,16 @@ func handleWIS(w http.ResponseWriter, r *http.Request) {
 
 	var buff bytes.Buffer
 	cmd.Stdout = &buff
-
-	cmd.Env = append(cmd.Env, q, "REQUEST_METHOD="+r.Method, "SERVER_NAME=localhost:1234")
+	cmd.Env = append(cmd.Env, q)
 	cmd.Env = append(cmd.Env, "MANPATH=/usr/man:/usr/share/man:/usr/local/man:/usr/local/share/man:/usr/X11R6/man:/opt/man:/snap/man")
 
+	var b bytes.Buffer
+	cmd.Stderr = &b
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Internal Server Error", 500)
-		return
+		syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
 	}
+	fmt.Println(err)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
