@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
-	"syscall"
 )
 
 //go:embed font.css
@@ -28,16 +27,17 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write(css)
 	})
+	http.Handle("/favicon.ico", http.NotFoundHandler())
 	http.Handle("/", http.RedirectHandler("/cgi-bin/man/man2html", http.StatusTemporaryRedirect))
 	http.ListenAndServe("0.0.0.0:3234", nil)
 }
 
 func getARG(exe, pth string) string {
 	i := strings.Index(pth, exe)
-	if i == -1 {
+	if i == -1 || len(pth) <= i+len(exe) {
 		return ""
 	}
-	return pth[i+len(exe)-1:]
+	return pth[i+len(exe):]
 }
 
 func getEXE(s string) string {
@@ -52,38 +52,38 @@ func getEXE(s string) string {
 
 func handleWIS(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println(r.Method, r.URL.Path, r.URL.Query().Encode())
+	var opt []string
 
 	exe := getEXE(r.URL.Path)
 	if exe == "" {
 		http.RedirectHandler("/cgi-bin/man/man2html", 404)
 	}
+	if s := getARG(exe, r.URL.Path); s != "" {
+		opt = append(opt, s)
+	}
 
 	q := "QUERY_STRING=" + r.URL.RawQuery
 
-	var opt []string
-	var rx string = fmt.Sprint(r.URL.Query()["query"])
-	if strings.IndexAny(rx, `^*&|;`) > 0 {
-		rx = fmt.Sprintf("QUERY_STRING= -r'%s' ", rx)
+	r.ParseForm()
+	rx := r.Form.Get("query")
+	if strings.ContainsAny(rx, `*&|`) {
+		// rx = fmt.Sprintf(`%s`, rx)
 		opt = append(opt, rx)
-		q = rx + q
 		exe = "mansearch"
 	}
 
 	cmd := exec.Command("/usr/lib/cgi-bin/man/"+exe, opt...)
+	fmt.Println(cmd.Args)
 
 	var buff bytes.Buffer
 	cmd.Stdout = &buff
 	cmd.Env = append(cmd.Env, q)
 	cmd.Env = append(cmd.Env, "MANPATH=/usr/man:/usr/share/man:/usr/local/man:/usr/local/share/man:/usr/X11R6/man:/opt/man:/snap/man")
 
-	var b bytes.Buffer
-	cmd.Stderr = &b
 	err := cmd.Run()
 	if err != nil {
-		syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
+		return
 	}
-	fmt.Println(err)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
