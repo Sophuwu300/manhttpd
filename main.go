@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -28,7 +27,7 @@ func main() {
 		w.Write(css)
 	})
 	http.Handle("/favicon.ico", http.NotFoundHandler())
-	http.Handle("/", http.RedirectHandler("/cgi-bin/man/man2html", http.StatusTemporaryRedirect))
+	http.Handle("/", handleTMP)
 	http.ListenAndServe("0.0.0.0:3234", nil)
 }
 
@@ -73,21 +72,15 @@ func handleWIS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmd := exec.Command("/usr/lib/cgi-bin/man/"+exe, opt...)
-	fmt.Println(cmd.Args)
 
-	var buff bytes.Buffer
-	cmd.Stdout = &buff
 	cmd.Env = append(cmd.Env, q)
-	cmd.Env = append(cmd.Env, "MANPATH=/usr/man:/usr/share/man:/usr/local/man:/usr/local/share/man:/usr/X11R6/man:/opt/man:/snap/man")
+	// cmd.Env = append(cmd.Env, "MANPATH=/usr/man:/usr/share/man:/usr/local/man:/usr/local/share/man:/usr/X11R6/man:/opt/man:/snap/man")
 
-	err := cmd.Run()
-	if err != nil {
-		return
-	}
+	b, _ := cmd.CombinedOutput()
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	page := buff.String()
+	page := string(b)
 	page = page[strings.Index(page, "<!"):]
 	i := strings.Index(page, "</HEAD>")
 	if i == -1 {
