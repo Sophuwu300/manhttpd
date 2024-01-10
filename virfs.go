@@ -1,17 +1,19 @@
 package main
 
+/*
 import (
+	"fmt"
 	"github.com/mandelsoft/vfs/pkg/memoryfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
 func Cmd(s string) []byte {
 	arg := strings.Split(s, " ")
 	cmd := exec.Command(arg[0], arg[1:]...)
-	out, _ := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
+	Err(err)
 	return out
 }
 
@@ -21,18 +23,24 @@ func Err(err error) {
 	}
 }
 
-func main() {
-	fs := memoryfs.New()
-	var err error
-	var file string
-
-	file = filepath.Join(fs.FSTempDir(), "test.txt")
-
-	err = vfs.WriteFile(fs, file, Cmd("man --pager=cat man"), 0644)
+func printDir(dir string) {
+	fi, err := vfs.ReadDir(fs, dir)
 	Err(err)
-
-	var b []byte
-	b, err = vfs.ReadFile(fs, file)
-	Err(err)
-	println(string(b))
+	fmt.Println("reading dir: ", dir)
+	for _, f := range fi {
+		fmt.Println(f.Name(), f.IsDir(), f.Size())
+	}
 }
+
+var fs vfs.FileSystem
+
+func main() {
+	fs = memoryfs.New()
+	wd, err := fs.Getwd()
+	Err(err)
+
+	printDir(wd)
+
+}
+
+*/
