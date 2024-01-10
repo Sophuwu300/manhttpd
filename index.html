@@ -1,0 +1,34 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD>
+<TITLE>Man Pages Index</TITLE>
+<link rel="stylesheet" href="/style.css">
+</HEAD>
+<BODY>
+<H1>Man Pages Index</H1>
+<HR>
+<H2>Open Page:</H2>
+<p>Input name of page.</p>
+<FORM method="get" action="/">
+	<INPUT TYPE="text" NAME="man">
+	<INPUT TYPE="submit" VALUE="Submit">
+</FORM>
+<HR>
+<H2>Search Pages:</H2>
+<p>Interpret each line as a separate keyword.</p>
+<FORM method="post" action="/">
+	<div class="flexy">
+	<textarea rows="5" name="search"></textarea><br>
+		<div>
+	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="r"> <B>Regex</B> match all keywords with regex.</LABEL><BR>
+	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="w"> <B>Wildcard</B> match all keywords by wildcard.</LABEL><BR>
+	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="e"> <B>Exact</B> match keywords exactly.</LABEL><BR>
+	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="a"> <B>And</B> all keywords must match.</LABEL><BR>
+	<INPUT TYPE="submit" VALUE="Submit">
+		</div>
+	</div>
+</FORM>
+<HR>
+<p>HOST: {{ hostname }} PORT: {{ port }}</p><br>
+</BODY>
+</HTML>

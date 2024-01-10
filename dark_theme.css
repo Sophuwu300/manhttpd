@@ -1,12 +1,53 @@
+* {
+    border-radius: 5px;
+    color: #c7c7c7;
+    margin: 5px 0;
+    padding: 0;
+}
+
+hr {
+    color: #363636;
+    margin: 10px 0;
+}
+
+.flexy {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+}
 
 body, html {
-    background-color: #1e1e1e;
+    background-color: #1f1e23;
     color: #c7c7c7;
+    padding: 0 5px;
 }
 
 input, textarea {
     background-color: #343434;
-    color: #c7c7c7;
+    border: 1px solid #c7c7c7;
+    padding: 4px;
+}
+
+input[type="text"], textarea {
+    height: inherit;
+    width: 300px;
+}
+
+label {
+    margin: 0 10px;
+    padding: 0;
+}
+
+input[type="checkbox"] {
+    width: fit-content;
+    height: fit-content;
+}
+
+input[type="submit"] {
+    background-color: #343434;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0 10px;
 }
 
 h1, h2, h3, h4, h5, h6 {

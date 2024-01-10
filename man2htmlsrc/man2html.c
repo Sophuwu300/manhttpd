@@ -31,7 +31,7 @@
 
 #define SIZE(a)	(sizeof(a)/sizeof(*a))
 #define DOCTYPE "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n"
-#define CONTENTTYPE "Content-type: text/html; charset=UTF-8\n\n"
+#define CONTENTTYPE ""
 
 static char NEWLINE[2]="\n";
 static char idxlabel[6] = "ixAAA";
@@ -2044,7 +2044,7 @@ scan_request(char *c) {
 		    fprintf(stderr, "ln -s %s.html %s.html\n", h, t);
 		    s=strrchr(t, '.');if (!s) s=t;
 		    printf(CONTENTTYPE DOCTYPE);
-		    printf("<HTML><HEAD><TITLE> Man page of %s</TITLE>\n"
+		    printf("<HTML><HEAD><link rel=\"stylesheet\" href=\"/style.css\"><TITLE> Man page of %s</TITLE>\n"
 			   "</HEAD><BODY>\n"
 			   "See the man page for <A HREF=\"%s.html\">%s</A>.\n"
 			   "</BODY></HTML>\n",
@@ -2318,7 +2318,7 @@ scan_request(char *c) {
 		    int skip=0;
 		    output_possible=1;
 		    printf(CONTENTTYPE DOCTYPE);
-		    out_html("<HTML><HEAD><TITLE>Man page of ");
+		    out_html("<HTML><HEAD><link rel=\"stylesheet\" href=\"/style.css\"><TITLE>Man page of ");
 		    scan_troff(wordlist[0], 0, &t);
 		    /* we need to remove all html tags */
 		    for (s=q=t; *s; s++) {
@@ -3199,13 +3199,13 @@ error_page(int status, char *s, char *t, ...) {
 
      switch(status) {
 	case 403:
-		printf("Status: 403 Forbidden\n");
+		//printf("Status: 403 Forbidden\n");
 		break;
 	case 404:
-		printf("Status: 404 Not Found\n");
+		//printf("Status: 404 Not Found\n");
 		break;
 	case 500:
-		printf("Status: 500 Internal Server Error\n");
+		//printf("Status: 500 Internal Server Error\n");
 		break;
 	case 0:
 	default:
@@ -3213,7 +3213,7 @@ error_page(int status, char *s, char *t, ...) {
      }
 	     
      printf(CONTENTTYPE DOCTYPE);
-     printf("<HTML><HEAD><TITLE>%s</TITLE></HEAD>\n"
+     printf("<HTML><HEAD><link rel=\"stylesheet\" href=\"/style.css\"><TITLE>%s</TITLE></HEAD>\n"
 	    "<BODY>\n<H1>%s</H1>\n", s, s);
      va_start(p, t);
      vfprintf(stdout, t, p);
