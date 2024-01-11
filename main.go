@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+var m2h = "/home/sophuwu/Documents/project/manpages/build/mh.2"
+
 //go:embed index.html
 var index []byte
 
@@ -106,7 +108,7 @@ func (m *ManPage) html(w http.ResponseWriter) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("/home/sophuwu/Documents/project/manpages/build/mh.2", "-H", CFG.Hostname+":"+CFG.ListenPort, "-M", "/", "-")
+	cmd := exec.Command(m2h, "-H", CFG.Hostname+":"+CFG.ListenPort, "-M", "/", "-")
 	cmd.Stdin = &buff
 	b, e := cmd.Output()
 	if e != nil {
@@ -150,7 +152,19 @@ func (m *ManPage) FindHumanInput(s string) error {
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-
+	r.ParseForm()
+	args := "-l\n-" + strings.Join(r.Form["arg"], "\n-")
+	search := strings.ReplaceAll(r.Form["search"][0], "\r", "")
+	args += "\n" + search
+	cmd := exec.Command("apropos", strings.Split(args, "\n")...)
+	cmd.Env = append(cmd.Env, os.Environ()...)
+	cmd.Env = append(cmd.Env, "MANPATH="+CFG.MANPATH)
+	b, e := cmd.Output()
+	if e != nil {
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 
