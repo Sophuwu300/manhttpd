@@ -106,7 +106,7 @@ func (m *ManPage) html(w http.ResponseWriter) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("/home/sophuwu/Documents/project/manpages/build/mh.2", "-H", CFG.Hostname+":"+CFG.ListenPort, "-M", "/", "-r", "-")
+	cmd := exec.Command("/home/sophuwu/Documents/project/manpages/build/mh.2", "-H", CFG.Hostname+":"+CFG.ListenPort, "-M", "/", "-")
 	cmd.Stdin = &buff
 	b, e := cmd.Output()
 	if e != nil {
@@ -139,10 +139,10 @@ func (m *ManPage) FindHumanInput(s string) error {
 	s = strings.ReplaceAll(s, ")", "")
 	if strings.Contains(s, " ") {
 		arr := strings.SplitN(s, " ", 2)
-		m.Section, m.Name = arr[0], arr[1]
+		m.Section, m.Name = arr[1], arr[0]
 	} else if strings.Contains(s, ".") {
 		arr := strings.SplitN(s, ".", 2)
-		m.Section, m.Name = arr[1], arr[0]
+		m.Section, m.Name = arr[0], arr[1]
 	} else {
 		m.Name = s
 	}
@@ -162,11 +162,15 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		searchHandler(w, r)
 		return
-
+	}
+	if !strings.HasPrefix(r.URL.RawQuery, "man=") && r.URL.RawQuery != "" {
+		r.URL.RawQuery = "man=" + r.URL.RawQuery
 	}
 	_ = r.ParseForm()
+	q := r.Form.Get("man")
+	println(q)
 	var man ManPage
-	if err := man.FindHumanInput(r.Form.Get("man")); err != nil {
+	if err := man.FindHumanInput(q); err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write(index)
