@@ -168,7 +168,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = r.ParseForm()
 	q := r.Form.Get("man")
-	println(q)
 	var man ManPage
 	if err := man.FindHumanInput(q); err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
