@@ -28,6 +28,7 @@ var CFG struct {
 	ListenAddr string
 	ListenPort string
 	MANPATH    string
+	Pandoc     string
 }
 
 func cmdout(s string) string {
@@ -45,13 +46,11 @@ func init() {
 	CFG.ListenAddr = os.Getenv("ListenAddr")
 	CFG.ListenPort = os.Getenv("ListenPort")
 	if CFG.ListenPort == "" {
-		CFG.ListenPort = "8080"
+		CFG.ListenPort = "8082"
 	}
-
+	b, _ := exec.Command("which", "pandoc").Output()
+	CFG.Pandoc = strings.TrimSpace(string(b))
 	css = append(css, font...)
-
-	index = bytes.ReplaceAll(index, []byte("{{ hostname }}"), []byte(CFG.Hostname))
-	index = bytes.ReplaceAll(index, []byte("{{ port }}"), []byte(CFG.ListenPort))
 }
 
 func main() {
@@ -86,37 +85,70 @@ func readCompressed(fh *os.File, buff *bytes.Buffer) error {
 	return err
 }
 
-func ReadFh(buff *bytes.Buffer, path string) error {
+func ReadFh(path string) (string, error) {
+	var buff bytes.Buffer
 	fh, err := os.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer fh.Close()
 	if strings.HasSuffix(path, ".gz") {
-		return readCompressed(fh, buff)
+		err = readCompressed(fh, &buff)
+		return buff.String(), err
 	}
 	_, err = buff.ReadFrom(fh)
-	return err
+	return buff.String(), err
 }
 
-func (m *ManPage) html(w http.ResponseWriter) error {
+func runM2h(input string, host string) (string, error) {
+	var inbuff bytes.Buffer
+	inbuff.WriteString(input)
+	cmd := exec.Command(m2h, "-H", host, "-M", "/", "-")
+	cmd.Stdin = &inbuff
+	b, err := cmd.Output()
+	return string(b), err
+
+}
+
+func pandocConvert(input string) (string, error) {
+	if CFG.Pandoc == "" {
+		return "", fmt.Errorf("pandoc not found, required for syntax conversion")
+	}
+	cmd := exec.Command(CFG.Pandoc, "-st", "man", "-f", "man")
+	cmd.Env = append(cmd.Env, os.Environ()...)
+	cmd.Stdin = strings.NewReader(input)
+	b, err := cmd.Output()
+	return string(b), err
+}
+
+func (m *ManPage) html(w http.ResponseWriter, r *http.Request) error {
 	if m.Path == "" {
 		return fmt.Errorf("no path")
 	}
-	var buff bytes.Buffer
-	err := ReadFh(&buff, m.Path)
+	var b, fh string
+	var err error
+	fh, err = ReadFh(m.Path)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(m2h, "-H", CFG.Hostname+":"+CFG.ListenPort, "-M", "/", "-")
-	cmd.Stdin = &buff
-	b, e := cmd.Output()
-	if e != nil {
+	b, err = runM2h(fh, r.Host)
+	if err != nil {
 		return fmt.Errorf("page not found")
+	}
+	if strings.Contains(b, "<TITLE>Invalid Man Page</TITLE>") {
+		fh, err = pandocConvert(fh)
+		if err != nil {
+			return err
+		}
+		fmt.Println(fh)
+		b, err = runM2h(fh, r.Host)
+		if err != nil {
+			return err
+		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+	fmt.Fprint(w, b)
 	return nil
 }
 
@@ -164,7 +196,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+	fmt.Fprint(w, strings.ReplaceAll(string(b), "\n", "<br>"))
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -186,8 +218,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	if err := man.FindHumanInput(q); err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		w.Write(index)
+		w.Write(bytes.ReplaceAll(index, []byte("{{ host }}"), []byte(r.Host)))
 		return
 	}
-	fmt.Fprintf(w, "%v", man.html(w))
+	fmt.Fprintf(w, "%v", man.html(w, r))
 }
