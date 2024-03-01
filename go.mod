@@ -1,4 +1,4 @@
-module manpages
+module manweb
 
 go 1.21.5
 

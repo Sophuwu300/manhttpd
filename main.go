@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-var m2h = "/home/sophuwu/Documents/project/manpages/build/mh.2"
-
 //go:embed index.html
 var index []byte
 
@@ -22,6 +20,9 @@ var font []byte
 
 //go:embed dark_theme.css
 var css []byte
+
+//go:embed favicon.ico
+var favicon []byte
 
 var CFG struct {
 	Hostname   string
@@ -62,7 +63,12 @@ func main() {
 		w.Write(css)
 	})
 
-	http.Handle("/favicon.ico", http.NotFoundHandler())
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Content-Length", fmt.Sprint(len(favicon)))
+		w.WriteHeader(http.StatusOK)
+		w.Write(favicon)
+	})
 	http.HandleFunc("/", indexHandler)
 	http.ListenAndServe(CFG.ListenAddr+":"+CFG.ListenPort, nil)
 
@@ -103,7 +109,7 @@ func ReadFh(path string) (string, error) {
 func runM2h(input string, host string) (string, error) {
 	var inbuff bytes.Buffer
 	inbuff.WriteString(input)
-	cmd := exec.Command(m2h, "-H", host, "-M", "/", "-")
+	cmd := exec.Command("manweb-conv", "-H", host, "-M", "/", "-")
 	cmd.Stdin = &inbuff
 	b, err := cmd.Output()
 	return string(b), err
@@ -140,7 +146,6 @@ func (m *ManPage) html(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(fh)
 		b, err = runM2h(fh, r.Host)
 		if err != nil {
 			return err
