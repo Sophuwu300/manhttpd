@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -34,7 +35,7 @@ var CFG struct {
 
 func cmdout(s string) string {
 	ss := strings.Split(s, " ")
-	b, e := exec.Command("/usr/bin/"+ss[0], ss[1:]...).Output()
+	b, e := exec.Command(ss[0], ss[1:]...).Output()
 	if e != nil {
 		log.Fatal("Fatal: unable to get " + ss[0])
 	}
@@ -42,15 +43,15 @@ func cmdout(s string) string {
 }
 
 func init() {
-	CFG.MANPATH = cmdout("manpath -g")
+	CFG.MANPATH = cmdout("manpath")
 	CFG.Hostname = cmdout("hostname")
+	CFG.Pandoc = cmdout("which pandoc")
 	CFG.ListenAddr = os.Getenv("ListenAddr")
 	CFG.ListenPort = os.Getenv("ListenPort")
 	if CFG.ListenPort == "" {
 		CFG.ListenPort = "8082"
 	}
-	b, _ := exec.Command("which", "pandoc").Output()
-	CFG.Pandoc = strings.TrimSpace(string(b))
+
 	css = append(css, font...)
 }
 
@@ -74,11 +75,25 @@ func main() {
 
 }
 
+const htmlHeader = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<link rel="stylesheet" type="text/css" href="/style.css">
+</head>
+<body>
+`
+
+func HtmlHeader(body *string, title string) {
+	*body = strings.ReplaceAll(htmlHeader, "{{ title }}", strings.ToUpper(title)) + *body + "</body></html>"
+	*body = strings.Replace(*body, "<h1>NAME</h1>", "<h1>"+strings.ToUpper(title)+"</h1>", 1)
+}
+
 type ManPage struct {
-	Section string
+	Section int
 	Name    string
 	Path    string
-	WhatIs  string
 }
 
 func readCompressed(fh *os.File, buff *bytes.Buffer) error {
@@ -106,21 +121,8 @@ func ReadFh(path string) (string, error) {
 	return buff.String(), err
 }
 
-func runM2h(input string, host string) (string, error) {
-	var inbuff bytes.Buffer
-	inbuff.WriteString(input)
-	cmd := exec.Command("manweb-conv", "-H", host, "-M", "/", "-")
-	cmd.Stdin = &inbuff
-	b, err := cmd.Output()
-	return string(b), err
-
-}
-
 func pandocConvert(input string) (string, error) {
-	if CFG.Pandoc == "" {
-		return "", fmt.Errorf("pandoc not found, required for syntax conversion")
-	}
-	cmd := exec.Command(CFG.Pandoc, "-st", "man", "-f", "man")
+	cmd := exec.Command(CFG.Pandoc, "--section-divs", "-t", "html4", "-f", "man")
 	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Stdin = strings.NewReader(input)
 	b, err := cmd.Output()
@@ -137,20 +139,11 @@ func (m *ManPage) html(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	b, err = runM2h(fh, r.Host)
+	b, err = pandocConvert(fh)
 	if err != nil {
-		return fmt.Errorf("page not found")
+		return err
 	}
-	if strings.Contains(b, "<TITLE>Invalid Man Page</TITLE>") {
-		fh, err = pandocConvert(fh)
-		if err != nil {
-			return err
-		}
-		b, err = runM2h(fh, r.Host)
-		if err != nil {
-			return err
-		}
-	}
+	HtmlHeader(&b, m.Name)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, b)
@@ -159,11 +152,10 @@ func (m *ManPage) html(w http.ResponseWriter, r *http.Request) error {
 
 func (m *ManPage) FindPath() error {
 	s := m.Name
-	if m.Section != "" {
-		s = m.Section + "." + s
+	if m.Section > 0 {
+		s += "." + fmt.Sprint(m.Section)
 	}
 	cmd := exec.Command("man", "-w", s)
-	cmd.Env = append(os.Environ(), "MANPATH="+CFG.MANPATH)
 	b, e := cmd.Output()
 	if e != nil {
 		return fmt.Errorf("page not found")
@@ -172,19 +164,19 @@ func (m *ManPage) FindPath() error {
 	return nil
 }
 
-func (m *ManPage) FindHumanInput(s string) error {
+var manRegexp = []*regexp.Regexp{regexp.MustCompile(`\.[1-9]$`), regexp.MustCompile(`( )?[(][1-9][)]$`)}
+
+func (m *ManPage) ParseName(s string) (err error) {
 	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "(", "")
-	s = strings.ReplaceAll(s, ")", "")
-	if strings.Contains(s, " ") {
-		arr := strings.SplitN(s, " ", 2)
-		m.Section, m.Name = arr[1], arr[0]
-	} else if strings.Contains(s, ".") {
-		arr := strings.SplitN(s, ".", 2)
-		m.Section, m.Name = arr[0], arr[1]
-	} else {
-		m.Name = s
+	for i, rx := range manRegexp {
+		if rx.MatchString(s) {
+			m.Section = int((s[len(s)-i-1]) - '0')
+			m.Name = strings.TrimSpace(s[:len(s)-i-2])
+			return m.FindPath()
+		}
 	}
+	m.Section = 0
+	m.Name = s
 	return m.FindPath()
 }
 
@@ -195,9 +187,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	args += "\n" + search
 	cmd := exec.Command("apropos", strings.Split(args, "\n")...)
 	cmd.Env = append(cmd.Env, os.Environ()...)
-	cmd.Env = append(cmd.Env, "MANPATH="+CFG.MANPATH)
+	// cmd.Env = append(cmd.Env, "MANPATH="+CFG.MANPATH)
 	b, e := cmd.Output()
 	if e != nil {
+		http.Error(w, "no results", http.StatusNotFound)
+		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -220,7 +214,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	q := r.Form.Get("man")
 	var man ManPage
-	if err := man.FindHumanInput(q); err != nil {
+	if err := man.ParseName(q); err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write(bytes.ReplaceAll(index, []byte("{{ host }}"), []byte(r.Host)))
