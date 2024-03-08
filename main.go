@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"github.com/mholt/archiver/v4"
 	"log"
 	"net/http"
 	"os"
@@ -16,9 +15,6 @@ import (
 //go:embed index.html
 var index []byte
 
-//go:embed font.css
-var font []byte
-
 //go:embed dark_theme.css
 var css []byte
 
@@ -29,13 +25,12 @@ var CFG struct {
 	Hostname   string
 	ListenAddr string
 	ListenPort string
-	MANPATH    string
-	Pandoc     string
+	MANPATH    []string
+	Mandoc     string
 }
 
 func cmdout(s string) string {
-	ss := strings.Split(s, " ")
-	b, e := exec.Command(ss[0], ss[1:]...).Output()
+	b, e := exec.Command("mandoc").Output()
 	if e != nil {
 		log.Fatal("Fatal: unable to get " + ss[0])
 	}
@@ -44,15 +39,13 @@ func cmdout(s string) string {
 
 func init() {
 	CFG.MANPATH = cmdout("manpath")
-	CFG.Hostname = cmdout("hostname")
-	CFG.Pandoc = cmdout("which pandoc")
+	CFG.Hostname, _ = os.Hostname()
+	CFG.Mandoc = cmdout()
 	CFG.ListenAddr = os.Getenv("ListenAddr")
 	CFG.ListenPort = os.Getenv("ListenPort")
 	if CFG.ListenPort == "" {
 		CFG.ListenPort = "8082"
 	}
-
-	css = append(css, font...)
 }
 
 func main() {
@@ -75,78 +68,25 @@ func main() {
 
 }
 
-const htmlHeader = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>{{ title }}</title>
-<link rel="stylesheet" type="text/css" href="/style.css">
-</head>
-<body>
-`
-
-func HtmlHeader(body *string, title string) {
-	*body = strings.ReplaceAll(htmlHeader, "{{ title }}", strings.ToUpper(title)) + *body + "</body></html>"
-	*body = strings.Replace(*body, "<h1>NAME</h1>", "<h1>"+strings.ToUpper(title)+"</h1>", 1)
-}
-
 type ManPage struct {
 	Section int
 	Name    string
 	Path    string
 }
 
-func readCompressed(fh *os.File, buff *bytes.Buffer) error {
-	decompressor, err := archiver.Gz{}.OpenReader(fh)
-	if err != nil {
-		return err
-	}
-	defer decompressor.Close()
-	_, err = buff.ReadFrom(decompressor)
-	return err
-}
-
-func ReadFh(path string) (string, error) {
-	var buff bytes.Buffer
-	fh, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return "", err
-	}
-	defer fh.Close()
-	if strings.HasSuffix(path, ".gz") {
-		err = readCompressed(fh, &buff)
-		return buff.String(), err
-	}
-	_, err = buff.ReadFrom(fh)
-	return buff.String(), err
-}
-
-func pandocConvert(input string) (string, error) {
-	cmd := exec.Command(CFG.Pandoc, "--section-divs", "-t", "html4", "-f", "man")
-	cmd.Env = append(cmd.Env, os.Environ()...)
-	cmd.Stdin = strings.NewReader(input)
-	b, err := cmd.Output()
-	return string(b), err
-}
-
 func (m *ManPage) html(w http.ResponseWriter, r *http.Request) error {
 	if m.Path == "" {
 		return fmt.Errorf("no path")
 	}
-	var b, fh string
-	var err error
-	fh, err = ReadFh(m.Path)
+	b, err := exec.Command(CFG.Mandoc, "-Thtml", m.Path).Output()
 	if err != nil {
 		return err
 	}
-	b, err = pandocConvert(fh)
-	if err != nil {
-		return err
-	}
-	HtmlHeader(&b, m.Name)
+	s := string(b)
+	// HtmlHeader(&s, m.Name)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, b)
+	fmt.Fprint(w, s)
 	return nil
 }
 
