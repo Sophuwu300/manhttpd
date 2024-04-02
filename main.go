@@ -25,22 +25,16 @@ var CFG struct {
 	Hostname   string
 	ListenAddr string
 	ListenPort string
-	MANPATH    []string
 	Mandoc     string
 }
 
-func cmdout(s string) string {
-	b, e := exec.Command("mandoc").Output()
-	if e != nil {
-		log.Fatal("Fatal: unable to get " + ss[0])
-	}
-	return strings.TrimSpace(string(b))
-}
-
 func init() {
-	CFG.MANPATH = cmdout("manpath")
 	CFG.Hostname, _ = os.Hostname()
-	CFG.Mandoc = cmdout()
+	b, e := exec.Command("which", "mandoc").Output()
+	if e != nil || len(b) == 0 {
+		log.Fatal("Fatal: no mandoc")
+	}
+	CFG.Mandoc = strings.TrimSpace(string(b))
 	CFG.ListenAddr = os.Getenv("ListenAddr")
 	CFG.ListenPort = os.Getenv("ListenPort")
 	if CFG.ListenPort == "" {
@@ -127,7 +121,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	args += "\n" + search
 	cmd := exec.Command("apropos", strings.Split(args, "\n")...)
 	cmd.Env = append(cmd.Env, os.Environ()...)
-	// cmd.Env = append(cmd.Env, "MANPATH="+CFG.MANPATH)
 	b, e := cmd.Output()
 	if e != nil {
 		http.Error(w, "no results", http.StatusNotFound)
