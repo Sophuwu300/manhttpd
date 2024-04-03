@@ -3,24 +3,17 @@
 		<meta charset="utf-8">
 		<title>{{ title }}</title>
 		<link rel="stylesheet" type="text/css" href="/style.css">
-		<script>
-
-		</script>
 	</head>
 <body>
 	<div class="flexy">
-		<h3 style="margin: 2px;">Find Man Pages: </h3>
+		<h3 style="margin: 2px;">Man Pages:</h3>
 		<FORM method="post" action="/">
 			<INPUT TYPE="text" name="q" autocomplete="off">
-			<INPUT TYPE="submit" name="t" VALUE="Open">
-			<INPUT TYPE="submit" name="t" VALUE="Search">
+			<INPUT TYPE="submit" VALUE="Search">
 		</FORM>
 	</div>
-	<HR>
+	<div class="content">
 		{{ content }}
-	<HR>
-	<p>
-		Host: <a href="{{ host }}">{{ hostname }}</a>
-	</p>
+	</div>
 	</body>
 </html>

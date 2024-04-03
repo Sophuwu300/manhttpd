@@ -1,9 +1,9 @@
 *{
-    font-family: Ubuntu, Helvetica, sans-serif;
+    font-family: Ubuntu!important;
     color: #c7c7c7;
 }
 table.head, table.foot {
-    width: 100%;
+    width: inherit;
 }
 td.head-rtitle, td.foot-os {
     text-align: right;
@@ -28,7 +28,7 @@ code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd {
     font-family: inherit;
 }
 code, pre {
-    font-family: Ubuntu Mono, Monospaced, serif!important;
+     font-family: Ubuntu!important;
 }
 i, em {
     color: #7f7f7f;
@@ -38,7 +38,11 @@ dt, b, strong {
 }
 hr {
     color: #363636;
-    margin-top: 0;
+    margin: 5px 0;
+}
+form{
+    padding:0;
+    margin:0;
 }
 .flexy {
     display: flex;
@@ -46,25 +50,32 @@ hr {
     justify-content: center;
 }
 body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
     background-color: #1f1e23;
     color: #c7c7c7;
 }
 h1, h2, h3, h4, h5, h6 {
     color: #8d53a6;
+    padding: 0;
+    margin: 0;
 }
-.section {
-    padding: 2px 10px;
+section, .head, .foot {
+    margin: 10px 5px;
+    padding: 4px 6px;
 }
-p, dt {
+p, dt, table {
     margin: 2px 10px;
+    padding: 5px 0;
 }
 a {
     color: #ff7597;
     text-decoration: underline;
 }
 a:hover {
+    color: #db335d;
     text-decoration: underline;
-    text-weight: bold;
 }
 input, textarea {
     background-color: #343434;
@@ -83,4 +94,20 @@ input[type="submit"] {
     background-color: #343434;
     font-weight: bold;
     cursor: pointer;
+}
+.flexy{
+    position: fixed;
+    z-index: 5;
+    width: 100%;
+    padding: 3px 0;
+    margin: 0;
+    top: 0;
+    background-color: #1f1e23;
+    border-bottom: #7f7f7f 1px solid;
+}
+.content{
+    width: calc(100% - 10px);
+    transform: translateY(40px);
+    margin: 0;
+    padding: 0;
 }

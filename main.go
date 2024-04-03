@@ -31,7 +31,7 @@ func GetCFG() {
 	index = strings.ReplaceAll(index, "{{ hostname }}", CFG.Hostname)
 	b, e := exec.Command("which", "mandoc").Output()
 	if e != nil || len(b) == 0 {
-		log.Fatal("Fatal: no mandoc")
+		log.Fatal("Fatal: no mandoc `apt-get install mandoc`")
 	}
 	CFG.Mandoc = strings.TrimSpace(string(b))
 	CFG.Addr = os.Getenv("ListenPort")
@@ -42,7 +42,6 @@ func GetCFG() {
 
 func main() {
 	GetCFG()
-
 	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Header().Set("Content-Length", fmt.Sprint(len(css)))
@@ -57,7 +56,6 @@ func main() {
 	})
 	http.HandleFunc("/", indexHandler)
 	http.ListenAndServe(":"+CFG.Addr, nil)
-
 }
 
 func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
@@ -70,35 +68,44 @@ func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
 }
 
 var LinkRemover = regexp.MustCompile(`(<a [^>]*>)|(</a>)`).ReplaceAllString
-var HTMLManName = regexp.MustCompile(`(<b>)?[a-zA-Z0-9_\-]+(</b>)?\([0-9a-z]+\)`)
+var HTMLManName = regexp.MustCompile(`(?:<b>)?([a-zA-Z0-9_\-]+)(?:</b>)?\(([0-9][0-9a-z]*)\)`)
 
 type ManPage struct {
 	Name    string
 	Section string
 	Desc    string
+	Path    string
 }
 
-func (m *ManPage) Path() string {
-	arg := "-w"
+func (m *ManPage) Where() error {
+	var arg = []string{"-w", m.Name}
 	if m.Section != "" {
-		arg += "s" + m.Section
+		arg = []string{"-w", "-s" + m.Section, m.Name}
 	}
-	b, _ := exec.Command("man", arg, m.Name).Output()
-	return strings.TrimSpace(string(b))
+	b, err := exec.Command("man", arg...).Output()
+	m.Path = strings.TrimSpace(string(b))
+	return err
 }
 func (m *ManPage) Html() string {
-	b, err := exec.Command(CFG.Mandoc, "-c", "-K", "utf-8", "-T", "html", "-O", "fragment", m.Path()).Output()
+	if m.Where() != nil {
+		return fmt.Sprintf("<p>404: Unable to locate page %s</p>", m.Name)
+	}
+	b, err := exec.Command(CFG.Mandoc, "-Thtml", "-O", "fragment", m.Path).Output()
 	if err != nil {
-		return fmt.Sprintf("<p>404: Page %s not found.</p>", m.Name)
+		return fmt.Sprintf("<p>500: server error loading %s</p>", m.Name)
 	}
 	html := LinkRemover(string(b), "")
+	html = HTMLManName.ReplaceAllStringFunc(html, func(s string) string {
+		m := HTMLManName.FindStringSubmatch(s)
+		return fmt.Sprintf(`<a href="/%s.%s">%s(%s)</a>`, m[1], m[2], m[1], m[2])
+	})
 	return html
 }
 
-var ManDotName = regexp.MustCompile(`^([a-zA-Z0-9_\-]+)(?:.([0-9a-z]+))?$`).FindStringSubmatch
+var ManDotName = regexp.MustCompile(`^([a-zA-Z0-9_\-]+)(?:\.([0-9a-z]+))?$`)
 
 func NewManPage(s string) (m ManPage) {
-	name := ManDotName(s)
+	name := ManDotName.FindStringSubmatch(s)
 	if len(name) >= 2 {
 		m.Name = name[1]
 	}
@@ -108,21 +115,35 @@ func NewManPage(s string) (m ManPage) {
 	return
 }
 
+var RxWords = regexp.MustCompile(`("[^"]+")|([^ ]+)`).FindAllString
+var RxWhatIs = regexp.MustCompile(`([a-zA-Z0-9_\-]+) [(]([0-9a-z]+)[)][\- ]+(.*)`).FindAllStringSubmatch
+
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	args := "-l\n-" + strings.Join(r.Form["arg"], "\n-")
-	search := strings.ReplaceAll(r.Form["search"][0], "\r", "")
-	args += "\n" + search
-	cmd := exec.Command("apropos", strings.Split(args, "\n")...)
-	cmd.Env = append(cmd.Env, os.Environ()...)
-	b, e := cmd.Output()
-	if e != nil {
-		http.Error(w, "no results", http.StatusNotFound)
+	_ = r.ParseForm()
+	q := r.Form.Get("q")
+	if q == "" || ManDotName.MatchString(q) {
+		http.Redirect(w, r, "/"+q, http.StatusFound)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, strings.ReplaceAll(string(b), "\n", "<br>"))
+	var args = RxWords("-l "+q, -1)
+	for i := range args {
+		args[i] = strings.TrimSpace(args[i])
+		args[i] = strings.TrimPrefix(args[i], `"`)
+		args[i] = strings.TrimSuffix(args[i], `"`)
+	}
+	cmd := exec.Command("apropos", args...)
+	b, e := cmd.Output()
+	if len(b) < 1 || e != nil {
+		WriteHtml(w, r, "Search", fmt.Sprintf("<p>404: no resualts matching %s</p>", q))
+		return
+	}
+	var output string
+	for _, line := range RxWhatIs(string(b), -1) { // strings.Split(string(b), "\n") {
+		if len(line) == 4 {
+			output += fmt.Sprintf(`<p><a href="/%s.%s">%s (%s)</a> - %s</p>%c`, line[1], line[2], line[1], line[2], line[3], 10)
+		}
+	}
+	WriteHtml(w, r, "Search", output)
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -132,20 +153,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		WriteHtml(w, r, man.Name, man.Html())
 		return
 	}
-
 	if r.Method == "POST" {
 		searchHandler(w, r)
 		return
 	}
-	if !strings.HasPrefix(r.URL.RawQuery, "man=") && r.URL.RawQuery != "" {
-		r.URL.RawQuery = "man=" + r.URL.RawQuery
-	}
-	_ = r.ParseForm()
-	var man ManPage
-	man.Name = r.Form.Get("man")
-	if man.Name == "" {
-		WriteHtml(w, r, "Index", "")
-		return
-	}
+	WriteHtml(w, r, "Index", "")
+	return
 
 }
