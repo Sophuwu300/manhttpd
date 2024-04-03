@@ -1,34 +1,26 @@
 <html>
-<head>
-<meta charset="utf-8">
-<title>Web Manpages</title>
-<link rel="stylesheet" type="text/css" href="/style.css">
-</head>
+	<head>
+		<meta charset="utf-8">
+		<title>{{ title }}</title>
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script>
+
+		</script>
+	</head>
 <body>
-<H1>Man Pages Index</H1>
-<HR>
-<H2>Open Page:</H2>
-<p>Input name of page.</p>
-<FORM method="get" action="/">
-	<INPUT TYPE="text" NAME="man">
-	<INPUT TYPE="submit" VALUE="Submit">
-</FORM>
-<HR>
-<H2>Search Pages:</H2>
-<p>Interpret each line as a separate keyword.</p>
-<FORM method="post" action="/">
 	<div class="flexy">
-	<textarea rows="5" name="search"></textarea><br>
-		<div>
-	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="r"> <B>Regex</B> match all keywords with regex.</LABEL><BR>
-	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="w"> <B>Wildcard</B> match all keywords by wildcard.</LABEL><BR>
-	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="e"> <B>Exact</B> match keywords exactly.</LABEL><BR>
-	<LABEL><INPUT TYPE="checkbox" NAME="arg" VALUE="a"> <B>And</B> all keywords must match.</LABEL><BR>
-	<INPUT TYPE="submit" VALUE="Submit">
-		</div>
+		<h3 style="margin: 2px;">Find Man Pages: </h3>
+		<FORM method="post" action="/">
+			<INPUT TYPE="text" name="q" autocomplete="off">
+			<INPUT TYPE="submit" name="t" VALUE="Open">
+			<INPUT TYPE="submit" name="t" VALUE="Search">
+		</FORM>
 	</div>
-</FORM>
-<HR>
-<a href="//{{ host }}">{{ host }}</a><br>
-</body>
+	<HR>
+		{{ content }}
+	<HR>
+	<p>
+		Host: <a href="{{ host }}">{{ hostname }}</a>
+	</p>
+	</body>
 </html>

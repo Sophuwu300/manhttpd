@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"fmt"
 	"log"
@@ -13,7 +12,7 @@ import (
 )
 
 //go:embed index.html
-var index []byte
+var index string
 
 //go:embed dark_theme.css
 var css []byte
@@ -22,27 +21,27 @@ var css []byte
 var favicon []byte
 
 var CFG struct {
-	Hostname   string
-	ListenAddr string
-	ListenPort string
-	Mandoc     string
+	Hostname string
+	Addr     string
+	Mandoc   string
 }
 
-func init() {
+func GetCFG() {
 	CFG.Hostname, _ = os.Hostname()
+	index = strings.ReplaceAll(index, "{{ hostname }}", CFG.Hostname)
 	b, e := exec.Command("which", "mandoc").Output()
 	if e != nil || len(b) == 0 {
 		log.Fatal("Fatal: no mandoc")
 	}
 	CFG.Mandoc = strings.TrimSpace(string(b))
-	CFG.ListenAddr = os.Getenv("ListenAddr")
-	CFG.ListenPort = os.Getenv("ListenPort")
-	if CFG.ListenPort == "" {
-		CFG.ListenPort = "8082"
+	CFG.Addr = os.Getenv("ListenPort")
+	if CFG.Addr == "" {
+		CFG.Addr = "8082"
 	}
 }
 
 func main() {
+	GetCFG()
 
 	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
@@ -50,7 +49,6 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write(css)
 	})
-
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/x-icon")
 		w.Header().Set("Content-Length", fmt.Sprint(len(favicon)))
@@ -58,60 +56,56 @@ func main() {
 		w.Write(favicon)
 	})
 	http.HandleFunc("/", indexHandler)
-	http.ListenAndServe(CFG.ListenAddr+":"+CFG.ListenPort, nil)
+	http.ListenAndServe(":"+CFG.Addr, nil)
 
 }
 
-type ManPage struct {
-	Section int
-	Name    string
-	Path    string
-}
-
-func (m *ManPage) html(w http.ResponseWriter, r *http.Request) error {
-	if m.Path == "" {
-		return fmt.Errorf("no path")
-	}
-	b, err := exec.Command(CFG.Mandoc, "-Thtml", m.Path).Output()
-	if err != nil {
-		return err
-	}
-	s := string(b)
-	// HtmlHeader(&s, m.Name)
+func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
+	out := strings.ReplaceAll(index, "{{ host }}", r.Host)
+	out = strings.ReplaceAll(out, "{{ title }}", title)
+	out = strings.ReplaceAll(out, "{{ content }}", html)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, s)
-	return nil
+	fmt.Fprint(w, out)
 }
 
-func (m *ManPage) FindPath() error {
-	s := m.Name
-	if m.Section > 0 {
-		s += "." + fmt.Sprint(m.Section)
-	}
-	cmd := exec.Command("man", "-w", s)
-	b, e := cmd.Output()
-	if e != nil {
-		return fmt.Errorf("page not found")
-	}
-	m.Path = strings.TrimSpace(string(b))
-	return nil
+var LinkRemover = regexp.MustCompile(`(<a [^>]*>)|(</a>)`).ReplaceAllString
+var HTMLManName = regexp.MustCompile(`(<b>)?[a-zA-Z0-9_\-]+(</b>)?\([0-9a-z]+\)`)
+
+type ManPage struct {
+	Name    string
+	Section string
+	Desc    string
 }
 
-var manRegexp = []*regexp.Regexp{regexp.MustCompile(`\.[1-9]$`), regexp.MustCompile(`( )?[(][1-9][)]$`)}
-
-func (m *ManPage) ParseName(s string) (err error) {
-	s = strings.TrimSpace(s)
-	for i, rx := range manRegexp {
-		if rx.MatchString(s) {
-			m.Section = int((s[len(s)-i-1]) - '0')
-			m.Name = strings.TrimSpace(s[:len(s)-i-2])
-			return m.FindPath()
-		}
+func (m *ManPage) Path() string {
+	arg := "-w"
+	if m.Section != "" {
+		arg += "s" + m.Section
 	}
-	m.Section = 0
-	m.Name = s
-	return m.FindPath()
+	b, _ := exec.Command("man", arg, m.Name).Output()
+	return strings.TrimSpace(string(b))
+}
+func (m *ManPage) Html() string {
+	b, err := exec.Command(CFG.Mandoc, "-c", "-K", "utf-8", "-T", "html", "-O", "fragment", m.Path()).Output()
+	if err != nil {
+		return fmt.Sprintf("<p>404: Page %s not found.</p>", m.Name)
+	}
+	html := LinkRemover(string(b), "")
+	return html
+}
+
+var ManDotName = regexp.MustCompile(`^([a-zA-Z0-9_\-]+)(?:.([0-9a-z]+))?$`).FindStringSubmatch
+
+func NewManPage(s string) (m ManPage) {
+	name := ManDotName(s)
+	if len(name) >= 2 {
+		m.Name = name[1]
+	}
+	if len(name) >= 3 {
+		m.Section = name[2]
+	}
+	return
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +127,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path != "/" {
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		// http.Redirect(w, r, "/", http.StatusFound)
+		man := NewManPage(r.URL.Path[1:])
+		WriteHtml(w, r, man.Name, man.Html())
 		return
 	}
 
@@ -145,13 +141,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		r.URL.RawQuery = "man=" + r.URL.RawQuery
 	}
 	_ = r.ParseForm()
-	q := r.Form.Get("man")
 	var man ManPage
-	if err := man.ParseName(q); err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(bytes.ReplaceAll(index, []byte("{{ host }}"), []byte(r.Host)))
+	man.Name = r.Form.Get("man")
+	if man.Name == "" {
+		WriteHtml(w, r, "Index", "")
 		return
 	}
-	fmt.Fprintf(w, "%v", man.html(w, r))
+
 }

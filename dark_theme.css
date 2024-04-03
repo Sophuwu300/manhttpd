@@ -2,6 +2,31 @@
     font-family: Ubuntu, Helvetica, sans-serif;
     color: #c7c7c7;
 }
+table.head, table.foot {
+    width: 100%;
+}
+td.head-rtitle, td.foot-os {
+    text-align: right;
+}
+td.head-vol {
+    text-align: center;
+}
+.Nd, .Bf, .Op {
+    display: inline;
+}
+.Pa, .Ad {
+    font-style: italic;
+}
+.Ms {
+    font-weight: bold;
+}
+.Bl-diag > dt {
+    font-weight: bold;
+}
+code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd {
+    font-weight: bold;
+    font-family: inherit;
+}
 code, pre {
     font-family: Ubuntu Mono, Monospaced, serif!important;
 }
@@ -13,12 +38,12 @@ dt, b, strong {
 }
 hr {
     color: #363636;
-    margin-top: 10px;
+    margin-top: 0;
 }
 .flexy {
     display: flex;
     flex-direction: row;
-    justify-content: flex-start;
+    justify-content: center;
 }
 body, html {
     background-color: #1f1e23;
@@ -46,22 +71,16 @@ input, textarea {
     border: 1px solid #c7c7c7;
     padding: 4px;
     border-radius: 5px;
+    margin: 2px;
 }
 
 input[type="text"], textarea {
     height: inherit;
     width: 300px;
-    margin: 2px 10px;
-}
-
-input[type="checkbox"] {
-    width: fit-content;
-    height: fit-content;
 }
 
 input[type="submit"] {
     background-color: #343434;
     font-weight: bold;
     cursor: pointer;
-    margin: 0;
 }
