@@ -68,7 +68,7 @@ func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
 }
 
 var LinkRemover = regexp.MustCompile(`(<a [^>]*>)|(</a>)`).ReplaceAllString
-var HTMLManName = regexp.MustCompile(`(?:<b>)?([a-zA-Z0-9_\-]+)(?:</b>)?\(([0-9][0-9a-z]*)\)`)
+var HTMLManName = regexp.MustCompile(`(?:<b>)?([a-zA-Z0-9_.:\-]+)(?:</b>)?\(([0-9][0-9a-z]*)\)`)
 
 type ManPage struct {
 	Name    string
