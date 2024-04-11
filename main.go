@@ -27,13 +27,18 @@ var CFG struct {
 }
 
 func GetCFG() {
-	CFG.Hostname, _ = os.Hostname()
+	CFG.Hostname = os.Getenv("HOSTNAME")
 	index = strings.ReplaceAll(index, "{{ hostname }}", CFG.Hostname)
 	b, e := exec.Command("which", "mandoc").Output()
 	if e != nil || len(b) == 0 {
-		log.Fatal("Fatal: no mandoc `apt-get install mandoc`")
+	    CFG.Mandoc=os.Getenv("MANDOCPATH")
+	    if CFG.Mandoc == "" {
+    	    log.Fatal("Fatal: no mandoc `apt-get install mandoc`")
+    	}
+	} else {
+	    CFG.Mandoc=string(b)
 	}
-	CFG.Mandoc = strings.TrimSpace(string(b))
+	//CFG.Mandoc = "/home/sophie/.local/bin/mandoc"
 	CFG.Addr = os.Getenv("ListenPort")
 	if CFG.Addr == "" {
 		CFG.Addr = "8082"
