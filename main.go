@@ -36,7 +36,7 @@ func GetCFG() {
     	    log.Fatal("Fatal: no mandoc `apt-get install mandoc`")
     	}
 	} else {
-	    CFG.Mandoc=string(b)
+	    CFG.Mandoc=strings.TrimSpace(string(b))
 	}
 	//CFG.Mandoc = "/home/sophie/.local/bin/mandoc"
 	CFG.Addr = os.Getenv("ListenPort")
@@ -60,7 +60,7 @@ func main() {
 		w.Write(favicon)
 	})
 	http.HandleFunc("/", indexHandler)
-	http.ListenAndServe(":"+CFG.Addr, nil)
+	http.ListenAndServe("0.0.0.0:"+CFG.Addr, nil)
 }
 
 func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
