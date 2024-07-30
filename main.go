@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"path/filepath"
 )
 
 //go:embed index.html
@@ -45,14 +46,16 @@ func GetCFG() {
 	}
 }
 
-func main() {
-	GetCFG()
-	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
+func CssHandle(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Header().Set("Content-Length", fmt.Sprint(len(css)))
 		w.WriteHeader(http.StatusOK)
 		w.Write(css)
-	})
+}
+
+func main() {
+	GetCFG()
+	http.HandleFunc("/style.css", CssHandle)
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/x-icon")
 		w.Header().Set("Content-Length", fmt.Sprint(len(favicon)))
@@ -60,7 +63,7 @@ func main() {
 		w.Write(favicon)
 	})
 	http.HandleFunc("/", indexHandler)
-	http.ListenAndServe("0.0.0.0:"+CFG.Addr, nil)
+	http.ListenAndServe("127.0.0.1:"+CFG.Addr, nil)
 }
 
 func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
@@ -102,7 +105,7 @@ func (m *ManPage) Html() string {
 	html := LinkRemover(string(b), "")
 	html = HTMLManName.ReplaceAllStringFunc(html, func(s string) string {
 		m := HTMLManName.FindStringSubmatch(s)
-		return fmt.Sprintf(`<a href="/%s.%s">%s(%s)</a>`, m[1], m[2], m[1], m[2])
+		return fmt.Sprintf(`<a href="?%s.%s">%s(%s)</a>`, m[1], m[2], m[1], m[2])
 	})
 	return html
 }
@@ -126,17 +129,23 @@ var RxWhatIs = regexp.MustCompile(`([a-zA-Z0-9_\-]+) [(]([0-9a-z]+)[)][\- ]+(.*)
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	q := r.Form.Get("q")
-	if q == "" || ManDotName.MatchString(q) {
-		http.Redirect(w, r, "/"+q, http.StatusFound)
+	if q==""{
+	    http.Redirect(w, r, r.URL.Path, http.StatusFound)
+	}
+	if func()bool{
+	    m:=NewManPage(q)
+	    return m.Where()==nil
+	    }() {
+		http.Redirect(w, r, "?"+q, http.StatusFound)
 		return
 	}
-	var args = RxWords("-l "+q, -1)
+	var args = RxWords("-lw "+q, -1)
 	for i := range args {
 		args[i] = strings.TrimSpace(args[i])
 		args[i] = strings.TrimPrefix(args[i], `"`)
 		args[i] = strings.TrimSuffix(args[i], `"`)
 	}
-	cmd := exec.Command("apropos", args...)
+    cmd := exec.Command("whatis", args...)
 	b, e := cmd.Output()
 	if len(b) < 1 || e != nil {
 		WriteHtml(w, r, "Search", fmt.Sprintf("<p>404: no resualts matching %s</p>", q))
@@ -145,24 +154,31 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	var output string
 	for _, line := range RxWhatIs(string(b), -1) { // strings.Split(string(b), "\n") {
 		if len(line) == 4 {
-			output += fmt.Sprintf(`<p><a href="/%s.%s">%s (%s)</a> - %s</p>%c`, line[1], line[2], line[1], line[2], line[3], 10)
+			output += fmt.Sprintf(`<p><a href="?%s.%s">%s (%s)</a> - %s</p>%c`, line[1], line[2], line[1], line[2], line[3], 10)
 		}
 	}
 	WriteHtml(w, r, "Search", output)
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+    path:=filepath.Base(r.URL.Path)
+    path=strings.TrimSuffix(path,"/")
+    if path=="style.css" {
+        CssHandle(w,r)
+        return
+    }
 
-	if r.URL.Path != "/" {
-		// http.Redirect(w, r, "/", http.StatusFound)
-		man := NewManPage(r.URL.Path[1:])
-		WriteHtml(w, r, man.Name, man.Html())
-		return
-	}
 	if r.Method == "POST" {
 		searchHandler(w, r)
 		return
 	}
+
+	r.ParseForm()
+	name:=r.URL.RawQuery
+	if name!="" {
+		man := NewManPage(name)
+		WriteHtml(w, r, man.Name, man.Html())
+		return
+	}
 	WriteHtml(w, r, "Index", "")
 	return
-
 }
