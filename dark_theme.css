@@ -1,5 +1,7 @@
+@import url("https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&family=Victor+Mono:ital,wght@0,100..700;1,100..700&display=swap");
 *{
     color: #c7c7c7;
+    font-family: 'Comfortaa', helvetica, sans-serif;
 }
 table.head, table.foot {
     width: inherit;
@@ -24,10 +26,10 @@ td.head-vol {
 }
 code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd {
     font-weight: bold;
-    font-family: inherit;
+    font-family: 'Victor Mono', monospace !important;
 }
 code, pre {
-     font-family: Ubuntu!important;
+    font-family: 'Victor Mono', monospace !important;
 }
 i, em {
     color: #7f7f7f;

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"path/filepath"
 )
 
 //go:embed index.html
@@ -23,8 +23,9 @@ var favicon []byte
 
 var CFG struct {
 	Hostname string
-	Addr     string
+	Port     string
 	Mandoc   string
+	Addr     string
 }
 
 func GetCFG() {
@@ -32,25 +33,29 @@ func GetCFG() {
 	index = strings.ReplaceAll(index, "{{ hostname }}", CFG.Hostname)
 	b, e := exec.Command("which", "mandoc").Output()
 	if e != nil || len(b) == 0 {
-	    CFG.Mandoc=os.Getenv("MANDOCPATH")
-	    if CFG.Mandoc == "" {
-    	    log.Fatal("Fatal: no mandoc `apt-get install mandoc`")
-    	}
+		CFG.Mandoc = os.Getenv("MANDOCPATH")
+		if CFG.Mandoc == "" {
+			log.Fatal("Fatal: no mandoc `apt-get install mandoc`")
+		}
 	} else {
-	    CFG.Mandoc=strings.TrimSpace(string(b))
+		CFG.Mandoc = strings.TrimSpace(string(b))
 	}
-	//CFG.Mandoc = "/home/sophie/.local/bin/mandoc"
-	CFG.Addr = os.Getenv("ListenPort")
+
+	CFG.Port = os.Getenv("ListenPort")
+	if CFG.Port == "" {
+		CFG.Port = "8082"
+	}
+	CFG.Addr = os.Getenv("ListenAddr")
 	if CFG.Addr == "" {
-		CFG.Addr = "8082"
+		CFG.Addr = "0.0.0.0"
 	}
 }
 
 func CssHandle(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		w.Header().Set("Content-Length", fmt.Sprint(len(css)))
-		w.WriteHeader(http.StatusOK)
-		w.Write(css)
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Header().Set("Content-Length", fmt.Sprint(len(css)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(css)
 }
 
 func main() {
@@ -63,7 +68,7 @@ func main() {
 		w.Write(favicon)
 	})
 	http.HandleFunc("/", indexHandler)
-	http.ListenAndServe("127.0.0.1:"+CFG.Addr, nil)
+	http.ListenAndServe(CFG.Addr+":"+CFG.Port, nil)
 }
 
 func WriteHtml(w http.ResponseWriter, r *http.Request, title, html string) {
@@ -129,13 +134,13 @@ var RxWhatIs = regexp.MustCompile(`([a-zA-Z0-9_\-]+) [(]([0-9a-z]+)[)][\- ]+(.*)
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	q := r.Form.Get("q")
-	if q==""{
-	    http.Redirect(w, r, r.URL.Path, http.StatusFound)
+	if q == "" {
+		http.Redirect(w, r, r.URL.Path, http.StatusFound)
 	}
-	if func()bool{
-	    m:=NewManPage(q)
-	    return m.Where()==nil
-	    }() {
+	if func() bool {
+		m := NewManPage(q)
+		return m.Where() == nil
+	}() {
 		http.Redirect(w, r, "?"+q, http.StatusFound)
 		return
 	}
@@ -145,7 +150,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		args[i] = strings.TrimPrefix(args[i], `"`)
 		args[i] = strings.TrimSuffix(args[i], `"`)
 	}
-    cmd := exec.Command("whatis", args...)
+	cmd := exec.Command("whatis", args...)
 	b, e := cmd.Output()
 	if len(b) < 1 || e != nil {
 		WriteHtml(w, r, "Search", fmt.Sprintf("<p>404: no resualts matching %s</p>", q))
@@ -160,12 +165,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	WriteHtml(w, r, "Search", output)
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-    path:=filepath.Base(r.URL.Path)
-    path=strings.TrimSuffix(path,"/")
-    if path=="style.css" {
-        CssHandle(w,r)
-        return
-    }
+	path := filepath.Base(r.URL.Path)
+	path = strings.TrimSuffix(path, "/")
+	if path == "style.css" {
+		CssHandle(w, r)
+		return
+	}
 
 	if r.Method == "POST" {
 		searchHandler(w, r)
@@ -173,8 +178,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	name:=r.URL.RawQuery
-	if name!="" {
+	name := r.URL.RawQuery
+	if name != "" {
 		man := NewManPage(name)
 		WriteHtml(w, r, man.Name, man.Html())
 		return

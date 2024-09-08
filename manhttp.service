@@ -1,0 +1,21 @@
+[Unit]
+Description=Server that serves a html man page interface over http
+After=network.target
+
+[Service]
+# Path to the command binary
+ExecStart=/usr/local/bin/manweb
+# Recommended to use /tmp as the working directory since data is not saved
+WorkingDirectory=/tmp
+Type=simple
+
+
+#Environment="ListenPort="
+#Environment="ListenAddr="
+#Environment="MANDOCPATH="
+#Environment="HOSTNAME="
+
+#User=
+
+[Install]
+WantedBy=multi-user.target
