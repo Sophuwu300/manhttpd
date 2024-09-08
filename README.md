@@ -8,7 +8,7 @@ This Go application serves man pages over HTTP. It allows users to view, search,
 - Search functionality to find specific man pages. Wildcards and regex are supported.
 - Hyperlinked pages for easy navigation for any valid reference in the document, and the ability to open the page in a new tab.
 - Will display all man pages in the manpath, including pages where `man2html` and `man -Thtml` fail.
-- Filter by page function or section: 1=commands, 3=C/C++ Refs, 5/7=conf/formatting, 8=sudo commands, etc.
+- Filter by page function or section: 1=commands, 3=C/C++ Refs, 5,7=config/format, 8=sudo commands, etc.
 - Able to correctly interpret and display incorrectly formatted man pages, to a degree.
 - Auto updates man pages when new packages are installed or removed using standard installation methods.
 
