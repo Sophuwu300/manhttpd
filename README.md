@@ -130,5 +130,6 @@ Glob patterns are also supported in the search bar if regex not enabled.\
 ## Help and Support
 
 I don't know how this git pull thing works. I will try if I see any issues. I've never collaborated on code before. If you have any suggestions, or questions about anything I've written, I would be happy to hear your thoughts.\
-contant info: (skisiel.com)[https://skisiel.com]\
-```
+contant info: [skisiel.com](https://skisiel.com) or [sophuwu.site](https://sophuwu.site)
+
+
