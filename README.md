@@ -1,33 +1,40 @@
 # Go Man Page Web Server
-
 This Go application serves man pages over HTTP. It allows users to view, search, and browse man pages directly from a web browser. The server dynamically integrates the hostname into the pages and provides static file support (CSS and favicon).
 
-I hope I find the dedication to translate mandoc into Go one day.
-But for now, you need to have `mandoc` installed on and set
-the `MANDOCPATH` environment variable to the path of the `mandoc` executable if the http user doesn't have it in its path.
-
+## Table of Contents
+- [Features](#features)
+- [Dependencies](#dependencies)
+- [Compiling The Binary](#compiling-the-binary)
+- [Systemd Service](#using-as-systemd-service)
+- [Accessing the Web Interface](#accessing-the-web-interface)
+- [Notes and Warnings](#notes-and-warnings)
 
 ## Features
+- Convert any man page into HTML, formatted for easy reading. With a dark theme.
+- Search functionality to find specific man pages. Wildcards and regex are supported.
+- Hyperlinked pages for easy navigation for any valid reference in the document, and the ability to open the page in a new tab.
+- Will display all man pages in the manpath, including pages where `man2html` and `man -Thtml` fail.
+- Filter by page function or section: 1=commands, 3=C/C++ Refs, 5/7=conf/formatting, 8=sudo commands, etc.
+- Able to correctly interpret and display incorrectly formatted man pages, to a degree.
+- Auto updates man pages when new packages are installed or removed using standard installation methods.
 
-- Serve UNIX man pages over a web interface.
-- Search functionality to find specific man pages.
-- Embedded HTML, CSS, and favicon for a simple, customizable UI.
-- Dynamic insertion of the server's hostname into the web interface.
+## Dependencies
+`mandoc` is required for parsing. Ubuntu/Debian/apt installation:
+```sh
+sudo apt-get install mandoc -y
+```
+`go v1.21.5` or greater is required to build the source code. Official installation instructions at [go.dev](https://go.dev/doc/install).\
+Quick and lazy script to install go 1.23.1 (Tested on Ubuntu 07-SEP-2024):
+```sh
+[ -d /usr/local/go ] && sudo rm -rf '/usr/local/go' ; # delete incompatible versions
+which wget || sudo apt-get install wget -y && wget https://go.dev/dl/go1.23.1.linux-amd64.tar.gz ; # downlaod compatible version 
+[ -f go1.23.1.linux-amd64.tar.gz ] && sudo tar -C /usr/local -xzf go1.23.1.linux-amd64.tar.gz ; # install into system
+[ -f /usr/local/go/bin/go ] && sudo ln -s /usr/local/go/bin/go /bin/go ; # add to bin
+go version ; # show version
+```
 
-## Prerequisites
+## Compiling The Binary
 
-- `go` to compile the server binary. Exmaple installation for amd64 linux:
-   ```sh
-   wget https://go.dev/dl/go1.23.1.linux-amd64.tar.gz && \
-  sudo tar -C /usr/local -xzf go1.23.1.linux-amd64.tar.gz
-   ```
-- `mandoc` package for parsing different man page formats.
-- `git` for cloning the repository.
-    ```sh
-    sudo apt-get install mandoc git
-    ```
-
-## Build Steps
  ```sh
 # download the source code
 git clone "https://sophuwu.site/manhttpd" && cd manhttpd
@@ -39,7 +46,7 @@ go build -ldflags="-s -w" -trimpath -o build/manhttpd
 sudo install ./build/manhttpd /usr/local/bin/manhttpd
 ```
 
-## To Use Systemd Service:
+## Using As Systemd Service:
 The provided service file should work on most systems, but you may need to edit it to fit your needs.\
 It will open a http server on port 8082 available through all network interfaces.\
 You should change the `ListenAddr` variable to `127.0.0.1` and use a secure reverse proxy if you are on a public network.\
@@ -95,19 +102,18 @@ Glob patterns are also supported in the search bar if regex not enabled.\
 Example search terms:
 - `ls*`: List all pages that begin with `ls`.
 - `-r ^ls`: Same as above but with regex.
-- `ls` or `ls -s1` or `ls.1`: Open the requested page.
+- `ls` or `ls -s1` or `ls.1`: Open the page for the `ls` user command.
 - `-r ^ls -s1`: List all pages that begin with `ls` in section 1 (user/bin commands).
 - `*config* -s8`: List all pages that contain `config` within the name and are in section 8 (sudo/sbin commands).  
 - `vsftpd.5`: Open the manual page for vsftpd confuguration file if vsftpd is installed.
 - `vsftpd.8`: Open the manual page for vsftpd executable if vsftpd is installed.
 
-## Details
+## Notes and Warnings
 - packages installed with apt or dpkg will automatically be available
 - manual pages may be unavailable if the package is not installed or the manuals are not included by the package
 - all manual pages that are correctly installed and comply with the manpath will be searchable and viewable
 - manuals that do not comply with the manpath will not be available for viewing may show up in search results
 
-## Embedded Static Files
 The application serves the following embedded static files:
 - `index.html`: The main HTML template, which includes placeholders for the server's hostname.
 - `dark_theme.css`: The CSS stylesheet used to style the web interface. No light theme is provided.
