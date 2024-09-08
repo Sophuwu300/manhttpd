@@ -16,7 +16,7 @@ This Go application serves man pages over HTTP. It allows users to view, search,
 
 Ubuntu/Debian dependency installation: `sudo apt-get install mandoc -y`
 
-Golang installation instructions at [go.dev](https://go.dev/doc/install).\
+Golang installation instructions at [go.dev](https://go.dev/doc/install).
 
 lazy script to install go 1.23.1 updated 7-SEP-2024
 
