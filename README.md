@@ -14,21 +14,24 @@ This Go application serves man pages over HTTP. It allows users to view, search,
 
 ## Dependencies
 
-`mandoc` is required for parsing. Ubuntu/Debian/apt installation:
+Ubuntu/Debian dependency installation: `sudo apt-get install mandoc -y`
 
-```sh
-sudo apt-get install mandoc -y
-```
+Golang installation instructions at [go.dev](https://go.dev/doc/install).\
 
-`go v1.21.5` or greater is required to build the source code. Official installation instructions at [go.dev](https://go.dev/doc/install).\
-Quick and lazy script to install go 1.23.1 (Tested on Ubuntu 07-SEP-2024):
+lazy script to install go 1.23.1 updated 7-SEP-2024
 
-```sh
-[ -d /usr/local/go ] && sudo rm -rf '/usr/local/go' ; # delete incompatible versions
-which wget || sudo apt-get install wget -y && wget https://go.dev/dl/go1.23.1.linux-amd64.tar.gz ; # downlaod compatible version 
-[ -f go1.23.1.linux-amd64.tar.gz ] && sudo tar -C /usr/local -xzf go1.23.1.linux-amd64.tar.gz ; # install into system
-[ -f /usr/local/go/bin/go ] && sudo ln -s /usr/local/go/bin/go /bin/go ; # add to bin
-go version ; # show version
+```bash
+#!/bin/bash
+# delete incompatible versions
+[ -d /usr/local/go ] && sudo rm -rf '/usr/local/go' ;
+# downlaod compatible version
+which wget || sudo apt-get install wget -y && wget https://go.dev/dl/go1.23.1.linux-amd64.tar.gz ;
+# install into system  
+[ -f go1.23.1.linux-amd64.tar.gz ] && sudo tar -C /usr/local -xzf go1.23.1.linux-amd64.tar.gz ;
+# add to bin 
+[ -f /usr/local/go/bin/go ] && sudo ln -s /usr/local/go/bin/go /bin/go ;
+# hope it works 
+go version ;
 ```
 
 ## Compiling The Binary
