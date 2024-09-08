@@ -2,15 +2,6 @@
 
 This Go application serves man pages over HTTP. It allows users to view, search, and browse man pages directly from a web browser. The server dynamically integrates the hostname into the pages and provides static file support (CSS and favicon).
 
-## Table of Contents
-
-- [Features](#features)
-- [Dependencies](#dependencies)
-- [Compiling The Binary](#compiling-the-binary)
-- [Systemd Service](#using-as-systemd-service)
-- [Accessing the Web Interface](#accessing-the-web-interface)
-- [Notes and Warnings](#notes-and-warnings)
-
 ## Features
 
 - Convert any man page into HTML, formatted for easy reading. With a dark theme.
